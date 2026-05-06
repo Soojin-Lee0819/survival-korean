@@ -1,0 +1,93 @@
+@import "tailwindcss" source(none);
+@source "./**/*.{js,jsx,ts,tsx,html}";
+
+@theme {
+  --font-sans: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Nunito", Georgia, serif;
+  --font-script: "Caveat", "Nunito", cursive;
+
+  --color-cream-50: #fffdf8;
+  --color-cream-100: #fdf6e9;
+
+  --color-blush-100: #fde9ef;
+  --color-blush-200: #fbd0dc;
+  --color-blush-400: #f59ab3;
+  --color-blush-600: #db567c;
+
+  --color-lilac-100: #ecebff;
+  --color-lilac-300: #c5c4ff;
+  --color-lilac-500: #8a87ff;
+
+  --color-mint-100: #e3f6ec;
+  --color-mint-300: #aeddc1;
+  --color-mint-600: #4d9c70;
+
+  --color-sand-100: #f9f0e1;
+  --color-sand-300: #e8d4a8;
+  --color-sand-700: #8a6a2b;
+}
+
+:root {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c2233;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(60% 50% at 10% 0%, rgba(253, 232, 240, 0.9), transparent 60%),
+    radial-gradient(50% 40% at 100% 10%, rgba(220, 215, 255, 0.8), transparent 60%),
+    radial-gradient(70% 60% at 50% 100%, rgba(255, 244, 220, 0.85), transparent 60%),
+    #fffdf8;
+  background-attachment: fixed;
+}
+
+#root {
+  width: 100%;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings: "ss01", "ss02";
+  letter-spacing: -0.01em;
+}
+
+.font-script {
+  font-family: var(--font-script);
+}
+
+@keyframes pastel-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.animate-soft-pulse {
+  animation: pastel-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-float {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+}
+
+.hover\:wiggle:hover {
+  animation: wiggle 0.5s ease-in-out;
+}
