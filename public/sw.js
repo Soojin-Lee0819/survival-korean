@@ -1,8 +1,14 @@
-const CACHE_NAME = 'korean-speaking-cache-v1';
-const CORE_ASSETS = ['/', '/manifest.json'];
+const CACHE_NAME = 'survival-korean-cache-v2';
+const SCOPE = self.registration?.scope || './';
+const CORE_ASSETS = [SCOPE, `${SCOPE}manifest.json`];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS))
+      .catch(() => undefined)
+  );
   self.skipWaiting();
 });
 
@@ -26,7 +32,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           return response;
         })
-        .catch(() => caches.match('/'));
+        .catch(() => caches.match(SCOPE));
     })
   );
 });

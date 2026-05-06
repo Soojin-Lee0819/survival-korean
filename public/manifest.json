@@ -1,19 +1,20 @@
 {
-  "name": "Korean Speaking Coach",
-  "short_name": "SpeakKorean",
-  "start_url": "/",
+  "name": "Survival Korean",
+  "short_name": "Survival KR",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#4f46e5",
-  "description": "Practice useful spoken Korean with pronunciation guides and repeat recording.",
+  "background_color": "#fffdf8",
+  "theme_color": "#fdf2f8",
+  "description": "Mobile-first 7-day plan for confident spoken Korean with pronunciation guides and repeat recording.",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "vite.svg",
       "sizes": "192x192",
       "type": "image/svg+xml"
     },
     {
-      "src": "/vite.svg",
+      "src": "vite.svg",
       "sizes": "512x512",
       "type": "image/svg+xml"
     }
