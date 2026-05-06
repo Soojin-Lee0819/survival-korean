@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:deploy": "node --test tests/deploy.test.mjs",
+    "verify": "GITHUB_ACTIONS=1 npm run build && npm run test:deploy"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
