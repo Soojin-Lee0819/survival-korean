@@ -26,12 +26,27 @@ npm run build
 npm run preview -- --host 127.0.0.1 --port 4173
 ```
 
-## Deployment
+## Deployment (Vercel)
 
-Deployed to GitHub Pages via the workflow at `.github/workflows/deploy.yml`.
-The workflow runs on every push to `main` and publishes the build output to the
-`gh-pages` environment.
+Configured for Vercel via `vercel.json`. Vite builds at root base (`/`),
+manifest + service worker register at root scope, and an SPA rewrite sends
+unmatched routes back to `index.html`.
 
-The Vite `base` is automatically set to `/survival-korean/` when the workflow
-runs (via `GITHUB_ACTIONS` env var) so all assets resolve correctly under the
-GitHub Pages subpath.
+### One-time setup
+
+1. Push `main` to GitHub (already done).
+2. Go to <https://vercel.com/new>, **Import** the `survival-korean` repo.
+3. Vercel auto-detects Vite from `vercel.json` — just click **Deploy**.
+
+Every subsequent push to `main` triggers an automatic production deploy.
+Pull request branches get preview URLs.
+
+### Verify locally
+
+```bash
+npm run verify
+```
+
+This builds the project and runs `tests/deploy.test.mjs` (17 invariants
+covering bundled asset paths, manifest scope, service worker portability,
+and `vercel.json` rewrite/header rules).

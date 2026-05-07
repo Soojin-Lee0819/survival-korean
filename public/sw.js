@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survival-korean-cache-v2';
+const CACHE_NAME = 'survival-korean-cache-v3-vercel';
 const SCOPE = self.registration?.scope || './';
 const CORE_ASSETS = [SCOPE, `${SCOPE}manifest.json`];
 
