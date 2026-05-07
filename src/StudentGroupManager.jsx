@@ -1,15 +1,27 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
-  CalendarHeart,
+  ArrowUpRight,
+  Compass,
   Flame,
+  Library,
   Mic,
   Pause,
   Play,
   Search,
-  Sparkles,
-  Wand2,
+  Square,
+  StickyNote,
 } from 'lucide-react';
+
+const ACCENT_PALETTE = [
+  { name: 'coral',      bg: '#fdeee7', tint: '#fbd9c8', ink: '#a8412c', dot: '#ec6a4d' },
+  { name: 'sage',       bg: '#eef2e6', tint: '#d2dcb8', ink: '#4f6840', dot: '#88a06c' },
+  { name: 'sand',       bg: '#f5ecd6', tint: '#e8d4a8', ink: '#7a5b1f', dot: '#c8a14a' },
+  { name: 'mist',       bg: '#e8eef0', tint: '#d0dde2', ink: '#3e5963', dot: '#5b7a85' },
+  { name: 'plum',       bg: '#f0e8ee', tint: '#e0cdda', ink: '#674057', dot: '#9a6f8a' },
+  { name: 'terracotta', bg: '#f4e3d6', tint: '#e6c2a3', ink: '#7c4a2c', dot: '#c47a4d' },
+  { name: 'cream',      bg: '#f5ecdc', tint: '#ecdfc6', ink: '#5a4731', dot: '#b3956a' },
+];
 
 const STORAGE_KEYS = {
   generated: 'korean-speaking-generated',
@@ -524,90 +536,93 @@ const DAY_PLAN = [
   },
 ];
 
-const Sticker = ({ type }) => {
-  const common = 'h-14 w-14 drop-shadow-sm';
-  if (type === 'wave') {
-    return (
-      <svg viewBox="0 0 64 64" className={common}>
-        <circle cx="32" cy="32" r="28" fill="#fde9ef" />
-        <path
-          d="M22 38c4 4 12 4 18-1l4-4c1.5-1.5 1-3-1-4l-7 7-2-2 5-5c1.5-1.5 1-3-1-4l-7 7-2-2 4-4c1.5-1.5 1-3-1-4l-12 12c-3 3-2 7 2 4z"
-          fill="#f59ab3"
-        />
-      </svg>
-    );
-  }
-  if (type === 'heart') {
-    return (
-      <svg viewBox="0 0 64 64" className={common}>
-        <circle cx="32" cy="32" r="28" fill="#fbe7ee" />
-        <path
-          d="M32 47s-13-8-13-18a8 8 0 0113-6 8 8 0 0113 6c0 10-13 18-13 18z"
-          fill="#f08fb0"
-        />
-        <circle cx="20" cy="20" r="2.5" fill="#fbcedb" />
-        <circle cx="46" cy="22" r="2" fill="#fbcedb" />
-      </svg>
-    );
-  }
-  if (type === 'bowl') {
-    return (
-      <svg viewBox="0 0 64 64" className={common}>
-        <circle cx="32" cy="32" r="28" fill="#fff1d6" />
-        <path d="M14 36h36c0 8-8 14-18 14s-18-6-18-14z" fill="#f4a05a" />
-        <ellipse cx="32" cy="36" rx="18" ry="3" fill="#fde2c0" />
-        <path d="M28 22c0 5 4 5 4 0M36 24c0 4 3 4 3 0M22 25c0 4 3 4 3 0" stroke="#c98843" strokeWidth="2" fill="none" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (type === 'chat') {
-    return (
-      <svg viewBox="0 0 64 64" className={common}>
-        <circle cx="32" cy="32" r="28" fill="#e6f4fb" />
-        <path
-          d="M14 24c0-3 2-5 5-5h22c3 0 5 2 5 5v12c0 3-2 5-5 5h-9l-7 6v-6h-6c-3 0-5-2-5-5z"
-          fill="#7cc4e6"
-        />
-        <circle cx="24" cy="30" r="2" fill="#fff" />
-        <circle cx="32" cy="30" r="2" fill="#fff" />
-        <circle cx="40" cy="30" r="2" fill="#fff" />
-      </svg>
-    );
-  }
-  if (type === 'family') {
-    return (
-      <svg viewBox="0 0 64 64" className={common}>
-        <circle cx="32" cy="32" r="28" fill="#dff4e6" />
-        <circle cx="22" cy="26" r="6" fill="#7bc299" />
-        <circle cx="42" cy="26" r="6" fill="#5fa37c" />
-        <path d="M14 46c2-6 8-10 14-10s8 2 8 6c0-4 4-6 8-6s10 4 12 10z" fill="#9bd3b3" />
-      </svg>
-    );
-  }
-  if (type === 'flower') {
-    return (
-      <svg viewBox="0 0 64 64" className={common}>
-        <circle cx="32" cy="32" r="28" fill="#efeaff" />
-        <g fill="#b9aafd">
-          <circle cx="32" cy="20" r="6" />
-          <circle cx="44" cy="32" r="6" />
-          <circle cx="32" cy="44" r="6" />
-          <circle cx="20" cy="32" r="6" />
-        </g>
-        <circle cx="32" cy="32" r="5" fill="#fbe18a" />
-      </svg>
-    );
-  }
+const STICKER_GLYPHS = {
+  wave: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 28c0-3 2-5 5-5s5 2 5 5v8" />
+      <path d="M26 22c0-3 2-5 5-5s5 2 5 5v14" />
+      <path d="M36 26c0-3 2-5 5-5s5 2 5 5v6c0 7-5 12-12 12s-12-5-12-12" />
+    </g>
+  ),
+  heart: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M32 44s-13-7-13-17a7 7 0 0113-3 7 7 0 0113 3c0 10-13 17-13 17z" />
+    </g>
+  ),
+  bowl: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 32h36" />
+      <path d="M16 32c0 9 7 14 16 14s16-5 16-14" />
+      <path d="M26 22c-1 3 1 4 0 6M32 19c-1 3 1 4 0 6M38 22c-1 3 1 4 0 6" />
+    </g>
+  ),
+  chat: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M14 22a4 4 0 014-4h22a4 4 0 014 4v12a4 4 0 01-4 4h-8l-7 6v-6h-7a4 4 0 01-4-4z" />
+      <circle cx="24" cy="28" r="1.2" fill="currentColor" />
+      <circle cx="30" cy="28" r="1.2" fill="currentColor" />
+      <circle cx="36" cy="28" r="1.2" fill="currentColor" />
+    </g>
+  ),
+  family: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="22" cy="22" r="5" />
+      <circle cx="42" cy="22" r="5" />
+      <path d="M12 44c1-7 7-12 14-12s8 3 8 7" />
+      <path d="M30 44c0-4 4-7 8-7 7 0 13 5 14 12" />
+    </g>
+  ),
+  flower: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="32" cy="32" r="4" />
+      <path d="M32 14a6 6 0 010 12M32 38a6 6 0 010 12M14 32a6 6 0 0112 0M38 32a6 6 0 0112 0" />
+    </g>
+  ),
+  star: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M32 14l5 11 12 1-9 8 3 12-11-7-11 7 3-12-9-8 12-1z" />
+    </g>
+  ),
+};
+
+const Sticker = ({ type, palette }) => {
+  const tone = palette || ACCENT_PALETTE[0];
   return (
-    <svg viewBox="0 0 64 64" className={common}>
-      <circle cx="32" cy="32" r="28" fill="#eaf0ff" />
-      <path
-        d="M32 14l4 12 12 1-9 8 3 12-10-7-10 7 3-12-9-8 12-1z"
-        fill="#9aa9f6"
-      />
-    </svg>
+    <span
+      className="inline-flex h-14 w-14 items-center justify-center rounded-2xl"
+      style={{ backgroundColor: tone.bg, color: tone.ink }}
+    >
+      <svg viewBox="0 0 64 64" className="h-9 w-9">
+        {STICKER_GLYPHS[type] || STICKER_GLYPHS.star}
+      </svg>
+    </span>
   );
 };
+
+const TigerMark = ({ size = 36 }) => (
+  <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true">
+    <circle cx="32" cy="34" r="20" fill="#ec6a4d" />
+    <path d="M21 25c-1-3 1-6 4-6l4 5z" fill="#ec6a4d" />
+    <path d="M43 25c1-3-1-6-4-6l-4 5z" fill="#ec6a4d" />
+    <path d="M24 22l4 4-2 2z" fill="#fbf7ef" />
+    <path d="M40 22l-4 4 2 2z" fill="#fbf7ef" />
+    <path d="M18 33c2-1 5-1 7 0M39 33c2-1 5-1 7 0" stroke="#1f1812" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+    <circle cx="26" cy="33" r="2.2" fill="#1f1812" />
+    <circle cx="38" cy="33" r="2.2" fill="#1f1812" />
+    <ellipse cx="32" cy="40" rx="3" ry="2" fill="#1f1812" />
+    <path d="M32 42v3M28 44c0 2 4 2 4 0M36 44c0 2-4 2-4 0" stroke="#1f1812" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+  </svg>
+);
+
+const PaletteSwatch = ({ palette, label }) => (
+  <span
+    className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-semibold tracking-wide"
+    style={{ backgroundColor: palette.bg, color: palette.ink }}
+  >
+    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: palette.dot }} />
+    {label}
+  </span>
+);
 
 const StudentGroupManager = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -764,60 +779,71 @@ const StudentGroupManager = () => {
     return { total, done };
   };
 
-  const renderPhraseCard = (phrase) => {
+  const renderPhraseCard = (phrase, palette) => {
+    const tone = palette || ACCENT_PALETTE[0];
     const isPracticed = practicedToday[phrase.id] === todayKey;
+    const hasRecording = Boolean(recordings[phrase.id]);
     return (
-      <article key={`${phrase.id}-${phrase.category}`} className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-[0_10px_30px_rgba(167,139,250,0.12)] backdrop-blur-sm">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-rose-500">
-            {phrase.category}
-          </p>
+      <article
+        key={`${phrase.id}-${phrase.category}`}
+        className="surface relative animate-in p-5"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <PaletteSwatch palette={tone} label={phrase.category} />
           {isPracticed && (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-              practiced
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+              style={{ backgroundColor: '#eef2e6', color: '#4f6840' }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#88a06c' }} />
+              done today
             </span>
           )}
         </div>
-        <h3 className="font-display mt-2 text-2xl font-bold leading-tight text-slate-900">
+
+        <h3 className="font-display mt-3 text-[28px] font-semibold leading-[1.1] text-ink-900">
           {phrase.koreanText}
         </h3>
-        <p className="mt-1 text-base font-semibold text-violet-700/80">
+        <p className="mt-1.5 text-[13px] font-medium tracking-[0.04em] text-ink-500">
           {phrase.romanization}
         </p>
-        <p className="mt-2 text-sm text-slate-600">{phrase.englishMeaning}</p>
+        <p className="mt-2 text-[15px] leading-snug text-ink-700">{phrase.englishMeaning}</p>
+
         {phrase.note && (
-          <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs italic text-amber-800">
+          <p
+            className="font-display-italic mt-3 rounded-2xl px-3 py-2 text-[13px] leading-snug"
+            style={{ backgroundColor: '#f8efe1', color: '#5a4731' }}
+          >
             {phrase.note}
           </p>
         )}
-        <div className="mt-4 flex flex-wrap gap-2">
+
+        <div className="mt-4 flex items-center gap-2">
           <button
             onClick={() => speakPhrase(phrase.koreanText)}
-            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-300 to-violet-400 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:scale-[1.02]"
+            className="btn-primary"
           >
-            <Play size={16} /> Listen
+            <Play size={14} fill="currentColor" /> Listen
           </button>
           {!isRecording ? (
             <button
               onClick={() => startRecording(phrase.id)}
-              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-rose-300 to-pink-400 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:scale-[1.02]"
+              className="btn-coral"
             >
-              <Mic size={16} /> Repeat
+              <Mic size={14} /> Repeat
             </button>
           ) : (
-            <button
-              onClick={stopRecording}
-              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:scale-[1.02]"
-            >
-              <Pause size={16} /> Stop
+            <button onClick={stopRecording} className="btn-coral">
+              <Square size={12} fill="currentColor" /> Stop
             </button>
           )}
           <button
             onClick={() => playRecording(phrase.id)}
-            disabled={!recordings[phrase.id]}
-            className="rounded-2xl bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 transition hover:bg-violet-200 disabled:opacity-40"
+            disabled={!hasRecording}
+            className="btn-ghost disabled:opacity-40 disabled:cursor-not-allowed"
+            title={hasRecording ? 'Play your recording' : 'Record yourself first'}
           >
-            Play Mine
+            <StickyNote size={14} /> Mine
           </button>
         </div>
       </article>
@@ -826,103 +852,54 @@ const StudentGroupManager = () => {
 
   const renderCountdown = () => {
     const inWindow = days >= 0 && days <= 7;
-    const banner =
+    const headline =
       days < 0
-        ? `Mission complete · ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago`
+        ? 'Done'
         : days === 0
-          ? 'D-Day · Today is the day'
-          : `D-${days}`;
-    const subline =
+          ? 'Today'
+          : `D−${days}`;
+    const headlineSub =
       days < 0
-        ? 'You did the work. Now keep speaking softly and slowly.'
+        ? `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} since`
         : days === 0
-          ? "Don't add new lines today — trust what you trained."
+          ? 'Speak softly. Speak slowly.'
           : days > 7
-            ? `Plan unlocks in ${days - 7} day${days - 7 === 1 ? '' : 's'}. Preview anytime.`
-            : `Day ${currentDayIndex + 1} of 7 · Stay in tonight, win tomorrow`;
+            ? `Plan unlocks in ${days - 7}`
+            : `Day ${currentDayIndex + 1} of 7`;
 
     return (
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-gradient-to-br from-rose-100 via-violet-100 to-sky-100 p-6 shadow-[0_18px_50px_rgba(244,114,182,0.18)]">
-        <div className="absolute -right-6 -top-6 h-28 w-28 animate-float rounded-full bg-white/40 blur-2xl" />
-        <div className="absolute -left-6 -bottom-6 h-28 w-28 animate-float rounded-full bg-rose-200/70 blur-2xl" />
-
-        <div className="relative">
-          <p className="font-script text-2xl text-rose-500">Survival Korean</p>
-          <p className="font-display text-3xl font-extrabold leading-tight text-slate-900">
-            in 7 Days
-          </p>
-
-          <div className="mt-5 flex items-baseline gap-3">
-            <span
-              className={`font-display text-7xl font-black leading-none tracking-tight text-rose-600 ${inWindow ? 'animate-soft-pulse' : ''}`}
-            >
-              {banner}
-            </span>
+      <section className="surface relative animate-in overflow-hidden p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className="label-eyebrow">Survival Korean</p>
+            <h1 className="font-display mt-1 text-[26px] font-semibold leading-[1.05] text-ink-900">
+              Seven calm days
+              <br />
+              <span className="font-display-italic text-coral-500">until you meet her parents.</span>
+            </h1>
           </div>
-          <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <CalendarHeart size={16} className="text-rose-500" />
-            Meeting on {formatLongDate(meetingDate)}
-          </p>
-          <p className="mt-1 text-sm text-slate-600">{subline}</p>
-
-          <div className="mt-5 grid grid-cols-7 gap-1.5">
-            {DAY_PLAN.map((day, idx) => {
-              const isCurrent = inWindow && idx === currentDayIndex;
-              const isPast = inWindow && idx < currentDayIndex;
-              return (
-                <button
-                  key={day.id}
-                  onClick={() => {
-                    setActiveDayId(day.id);
-                    setActiveTab('day');
-                  }}
-                  className={`h-2.5 rounded-full transition ${
-                    isCurrent
-                      ? 'bg-rose-500'
-                      : isPast
-                        ? 'bg-rose-300'
-                        : 'bg-white/70 ring-1 ring-rose-200'
-                  }`}
-                  aria-label={`Open ${day.label}`}
-                />
-              );
-            })}
-          </div>
-
-          {inWindow && (
-            <button
-              onClick={() => {
-                setActiveDayId(DAY_PLAN[currentDayIndex].id);
-                setActiveTab('day');
-              }}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:scale-[1.02]"
-            >
-              Start Day {currentDayIndex + 1} →
-            </button>
-          )}
+          <span className="inline-flex shrink-0 animate-drift" aria-hidden="true">
+            <TigerMark size={48} />
+          </span>
         </div>
-      </section>
-    );
-  };
 
-  const renderHome = () => (
-    <div className="space-y-5">
-      {renderCountdown()}
-
-      <section>
-        <div className="mb-2 flex items-end justify-between px-1">
-          <div>
-            <p className="font-script text-xl text-violet-500">your roadmap</p>
-            <h2 className="font-display text-xl font-bold text-slate-900">7-Day Plan</h2>
+        <div className="mt-6 flex items-end gap-4">
+          <div
+            className="font-display text-[88px] font-semibold leading-none tracking-tight text-ink-900"
+            style={{ fontFeatureSettings: '"ss01","tnum"' }}
+          >
+            {headline}
           </div>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-400">
-            tap a day
-          </p>
+          <div className="pb-2">
+            <p className="text-[13px] font-medium text-ink-500">{headlineSub}</p>
+            <p className="mt-0.5 text-[12px] text-ink-300">{formatLongDate(meetingDate)}</p>
+          </div>
         </div>
-        <div className="space-y-3">
+
+        <div className="mt-5 flex items-center gap-1.5">
           {DAY_PLAN.map((day, idx) => {
-            const { total, done } = dayProgress(day);
-            const isCurrent = days >= 0 && days <= 7 && idx === currentDayIndex;
+            const isCurrent = inWindow && idx === currentDayIndex;
+            const isPast = inWindow && idx < currentDayIndex;
             return (
               <button
                 key={day.id}
@@ -930,209 +907,351 @@ const StudentGroupManager = () => {
                   setActiveDayId(day.id);
                   setActiveTab('day');
                 }}
-                className={`group relative w-full overflow-hidden rounded-3xl border ${day.border} bg-gradient-to-br ${day.accent} p-4 text-left shadow-[0_10px_24px_rgba(148,163,184,0.18)] transition hover:-translate-y-0.5`}
+                className="group relative h-1.5 flex-1 rounded-full transition"
+                style={{
+                  backgroundColor: isCurrent ? '#ec6a4d' : isPast ? '#f3a387' : '#ecdfc6',
+                }}
+                aria-label={`Open ${day.label}: ${day.theme}`}
+              />
+            );
+          })}
+        </div>
+
+        {inWindow && (
+          <button
+            onClick={() => {
+              setActiveDayId(DAY_PLAN[currentDayIndex].id);
+              setActiveTab('day');
+            }}
+            className="btn-primary mt-5"
+          >
+            Open Day {currentDayIndex + 1} <ArrowUpRight size={14} />
+          </button>
+        )}
+      </section>
+    );
+  };
+
+  const renderHome = () => (
+    <div className="space-y-6">
+      {renderCountdown()}
+
+      <section className="animate-in delay-50">
+        <div className="mb-3 flex items-end justify-between px-1">
+          <div>
+            <p className="label-eyebrow">The Plan</p>
+            <h2 className="font-display mt-0.5 text-[22px] font-semibold leading-tight text-ink-900">
+              Seven days, seven moods
+            </h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {DAY_PLAN.map((day, idx) => {
+            const { total, done } = dayProgress(day);
+            const isCurrent = days >= 0 && days <= 7 && idx === currentDayIndex;
+            const palette = ACCENT_PALETTE[idx % ACCENT_PALETTE.length];
+            return (
+              <button
+                key={day.id}
+                onClick={() => {
+                  setActiveDayId(day.id);
+                  setActiveTab('day');
+                }}
+                className="group surface relative flex flex-col items-start p-4 text-left transition hover:-translate-y-0.5"
               >
-                <div className="absolute right-3 top-3 transition group-hover:scale-105">
-                  <Sticker type={day.sticker} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`rounded-full ${day.chip} px-2 py-0.5 text-[11px] font-bold`}>
+                <Sticker type={day.sticker} palette={palette} />
+                <div className="mt-3 flex items-center gap-1.5">
+                  <span className="text-[10.5px] font-semibold tracking-[0.18em] uppercase text-ink-500">
                     {day.label}
                   </span>
                   {isCurrent && (
-                    <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-white">
-                      today
-                    </span>
+                    <span
+                      className="inline-flex h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: '#ec6a4d' }}
+                      aria-label="Today"
+                    />
                   )}
                 </div>
-                <p className="font-display mt-2 text-xl font-bold text-slate-900">
+                <p className="font-display mt-1 text-[17px] font-semibold leading-tight text-ink-900">
                   {day.theme}
                 </p>
-                <p className="text-sm text-slate-600">{day.subtitle}</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/60">
+                <p className="mt-0.5 text-[12.5px] leading-snug text-ink-500">
+                  {day.subtitle}
+                </p>
+                <div className="mt-3 flex w-full items-center gap-2">
+                  <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: palette.tint }}>
                     <div
-                      className="h-full bg-rose-500"
-                      style={{ width: `${total ? (done / total) * 100 : 0}%` }}
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${total ? (done / total) * 100 : 0}%`,
+                        backgroundColor: palette.dot,
+                      }}
                     />
                   </div>
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    {done}/{total} today
+                  <span className="text-[10.5px] font-medium text-ink-500 tabular-nums">
+                    {done}/{total}
                   </span>
                 </div>
               </button>
             );
           })}
+
+          <button
+            onClick={() => setActiveTab('wildcard')}
+            className="surface group relative col-span-2 flex items-center gap-4 p-4 text-left transition hover:-translate-y-0.5"
+          >
+            <Sticker type="family" palette={ACCENT_PALETTE[5]} />
+            <div className="flex-1">
+              <p className="label-eyebrow">Wildcard</p>
+              <p className="font-display mt-0.5 text-[17px] font-semibold leading-tight text-ink-900">
+                100 lines for her parents
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-ink-500">
+                Formal, kind, never overconfident.
+              </p>
+            </div>
+            <ArrowUpRight size={18} className="text-ink-500 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </button>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-white/85 p-4 shadow-sm">
-        <p className="font-script text-xl text-rose-500">extra points</p>
-        <h3 className="font-display text-lg font-bold text-slate-900">
-          100 lines to impress her parents
-        </h3>
-        <p className="text-sm text-slate-600">
-          Tap to browse the wildcard pack — formal, kind, calm phrases.
+      <section className="animate-in delay-100 surface-soft p-5">
+        <p className="label-eyebrow">Tonight's note</p>
+        <p className="font-display-italic mt-2 text-[17px] leading-snug text-ink-700">
+          “The win isn't memorizing fifty lines. It's saying three lines slowly,
+          with eye contact, and meaning every syllable.”
         </p>
-        <button
-          onClick={() => setActiveTab('wildcard')}
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-400 to-pink-500 px-4 py-2 text-sm font-bold text-white"
-        >
-          Open wildcard pack →
-        </button>
       </section>
     </div>
   );
 
   const renderDay = () => {
-    const day = DAY_PLAN.find((d) => d.id === activeDayId) || DAY_PLAN[currentDayIndex];
+    const dayIndex = DAY_PLAN.findIndex((d) => d.id === activeDayId);
+    const resolvedIndex = dayIndex === -1 ? currentDayIndex : dayIndex;
+    const day = DAY_PLAN[resolvedIndex];
+    const palette = ACCENT_PALETTE[resolvedIndex % ACCENT_PALETTE.length];
     const { total, done } = dayProgress(day);
 
     return (
       <div className="space-y-4">
         <button
           onClick={() => setActiveTab('home')}
-          className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"
+          className="inline-flex items-center gap-1 text-[13px] font-medium text-ink-500 hover:text-ink-900"
         >
-          <ArrowLeft size={14} /> Back
+          <ArrowLeft size={14} /> Back to plan
         </button>
 
-        <section
-          className={`rounded-3xl border ${day.border} bg-gradient-to-br ${day.accent} p-5 shadow-sm`}
-        >
-          <div className="flex items-center gap-2">
-            <span className={`rounded-full ${day.chip} px-2 py-0.5 text-[11px] font-bold`}>
-              {day.label}
-            </span>
-            <span className="text-xs font-semibold text-slate-500">
-              {done}/{total} practiced today
-            </span>
+        <section className="surface animate-in p-6">
+          <div className="flex items-start gap-4">
+            <Sticker type={day.sticker} palette={palette} />
+            <div className="flex-1">
+              <p className="label-eyebrow">{day.label}</p>
+              <h2 className="font-display mt-1 text-[28px] font-semibold leading-tight text-ink-900">
+                {day.theme}
+              </h2>
+              <p className="mt-1 text-[14px] text-ink-500">{day.subtitle}</p>
+            </div>
           </div>
-          <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">
-            {day.theme}
-          </h2>
-          <p className="text-sm text-slate-700">{day.subtitle}</p>
-          <p className="mt-3 rounded-2xl bg-white/70 p-3 text-sm italic text-slate-700">
+
+          <p
+            className="font-display-italic mt-5 rounded-2xl px-4 py-3 text-[15px] leading-snug"
+            style={{ backgroundColor: palette.bg, color: palette.ink }}
+          >
             “{day.mission}”
           </p>
+
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: palette.tint }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${total ? (done / total) * 100 : 0}%`,
+                  backgroundColor: palette.dot,
+                }}
+              />
+            </div>
+            <span className="text-[11px] font-medium tabular-nums text-ink-500">
+              {done}/{total} today
+            </span>
+          </div>
         </section>
 
         <section className="space-y-3">
-          {day.phrases.map((phrase) =>
-            renderPhraseCard({ ...phrase, category: `${day.label} · ${day.theme}` })
-          )}
+          {day.phrases.map((phrase, idx) => (
+            <div key={phrase.id} className="animate-in" style={{ animationDelay: `${idx * 40}ms` }}>
+              {renderPhraseCard({ ...phrase, category: day.theme }, palette)}
+            </div>
+          ))}
         </section>
       </div>
     );
   };
 
-  const renderCustom = () => (
-    <section className="space-y-3">
-      <div className="rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_10px_30px_rgba(139,92,246,0.16)] backdrop-blur-sm">
-        <p className="font-script text-xl text-violet-500">your phrasebook</p>
-        <h2 className="font-display text-lg font-bold text-slate-900">
-          Search or create any phrase
-        </h2>
-        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-violet-100 bg-violet-50/70 px-3">
-          <Search size={16} className="text-violet-400" />
-          <input
-            id="search-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="e.g. it was nice meeting you"
-            className="w-full bg-transparent py-2 text-sm outline-none placeholder:text-violet-300"
-          />
+  const renderCustom = () => {
+    const customPalette = ACCENT_PALETTE[3];
+    return (
+      <section className="space-y-4">
+        <div className="surface animate-in p-6">
+          <p className="label-eyebrow">Phrasebook</p>
+          <h2 className="font-display mt-1 text-[24px] font-semibold leading-tight text-ink-900">
+            Search anything you might say
+          </h2>
+          <p className="mt-1 text-[13px] text-ink-500">
+            Try a feeling, a situation, a single word. We'll find the closest line.
+          </p>
+
+          <div className="mt-4 flex items-center gap-2 rounded-2xl px-4 py-1" style={{ backgroundColor: '#f5ecdc' }}>
+            <Search size={16} className="text-ink-500" />
+            <input
+              id="search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="e.g. it was nice meeting you"
+              className="w-full bg-transparent py-2.5 text-[14px] text-ink-900 outline-none placeholder:text-ink-300"
+            />
+          </div>
+
+          <div className="mt-4 border-t border-cream-200 pt-4">
+            <p className="label-eyebrow">If we don't have it</p>
+            <div className="mt-2 flex items-center gap-2 rounded-2xl px-4 py-1" style={{ backgroundColor: '#fdeee7' }}>
+              <Compass size={16} style={{ color: '#a8412c' }} />
+              <input
+                id="custom-input"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="Type an English sentence"
+                className="w-full bg-transparent py-2.5 text-[14px] text-ink-900 outline-none placeholder:text-ink-300"
+              />
+            </div>
+            <button onClick={generatePhrase} className="btn-coral mt-3" disabled={!customInput.trim()}>
+              Translate it <ArrowUpRight size={14} />
+            </button>
+          </div>
         </div>
 
-        <p className="mt-4 text-xs font-bold uppercase tracking-[0.15em] text-rose-500">
-          not found?
-        </p>
-        <div className="mt-2 flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50/70 px-3">
-          <Wand2 size={16} className="text-rose-500" />
-          <input
-            id="custom-input"
-            value={customInput}
-            onChange={(e) => setCustomInput(e.target.value)}
-            placeholder="Type the English sentence to translate"
-            className="w-full bg-transparent py-2 text-sm outline-none placeholder:text-rose-300"
-          />
-        </div>
-        <button
-          onClick={generatePhrase}
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-400 to-violet-500 px-4 py-2 text-sm font-bold text-white shadow-sm"
-        >
-          <Sparkles size={16} /> Generate
-        </button>
-      </div>
+        {searchResults.length === 0 ? (
+          <div className="surface-soft p-5 text-[13.5px] text-ink-500">
+            Try searching <span className="font-display-italic text-ink-700">“meeting parents”</span>,
+            {' '}
+            <span className="font-display-italic text-ink-700">“I miss you”</span>, or generate one above.
+          </div>
+        ) : (
+          searchResults.map((phrase, idx) => (
+            <div key={phrase.id} className="animate-in" style={{ animationDelay: `${idx * 30}ms` }}>
+              {renderPhraseCard(phrase, customPalette)}
+            </div>
+          ))
+        )}
+      </section>
+    );
+  };
 
-      {searchResults.length === 0 ? (
-        <div className="rounded-3xl border border-white/70 bg-white/90 p-4 text-sm text-slate-500 shadow-sm">
-          Try searching “meeting parents”, “I miss you”, or generate a custom line above.
+  const renderWildcard = () => {
+    const palette = ACCENT_PALETTE[5];
+    return (
+      <section className="space-y-4">
+        <div className="surface animate-in p-6">
+          <div className="flex items-start gap-4">
+            <Sticker type="family" palette={palette} />
+            <div className="flex-1">
+              <p className="label-eyebrow">Wildcard pack</p>
+              <h2 className="font-display mt-1 text-[24px] font-semibold leading-tight text-ink-900">
+                100 lines for her parents
+              </h2>
+              <p className="mt-1 text-[13px] text-ink-500">
+                Calm, polite, never overconfident. Pick three you can actually say.
+              </p>
+            </div>
+          </div>
         </div>
-      ) : (
-        searchResults.map((phrase) => renderPhraseCard(phrase))
-      )}
-    </section>
-  );
-
-  const renderWildcard = () => (
-    <section className="space-y-3">
-      <div className="rounded-3xl border border-rose-200 bg-gradient-to-br from-rose-100 via-pink-50 to-amber-50 p-5 shadow-sm">
-        <p className="font-script text-xl text-rose-500">wildcard pack</p>
-        <h2 className="font-display text-2xl font-bold text-slate-900">
-          100 lines to impress her parents
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Calm, polite, never overconfident. Pick three you can actually say.
-        </p>
-      </div>
-      <div className="space-y-3">
-        {wildcardPhrases
-          .slice(0, 30)
-          .map((phrase) => renderPhraseCard({ ...phrase, category: 'Impress Parents' }))}
-      </div>
-    </section>
-  );
+        <div className="space-y-3">
+          {wildcardPhrases.slice(0, 30).map((phrase, idx) => (
+            <div key={phrase.id} className="animate-in" style={{ animationDelay: `${idx * 25}ms` }}>
+              {renderPhraseCard({ ...phrase, category: 'Parents' }, palette)}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  };
 
   const renderHistory = () => (
-    <section className="space-y-3 rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_10px_30px_rgba(125,211,252,0.18)] backdrop-blur-sm">
-      <p className="font-script text-xl text-sky-500">progress diary</p>
-      <h2 className="font-display text-lg font-bold text-slate-900">Practice History</h2>
-      {practiceHistory.length === 0 && (
-        <p className="text-sm text-slate-500">
-          No recordings yet. Tap “Repeat” on a phrase to begin.
+    <section className="space-y-4">
+      <div className="surface animate-in p-6">
+        <p className="label-eyebrow">Diary</p>
+        <h2 className="font-display mt-1 text-[24px] font-semibold leading-tight text-ink-900">
+          What you've practiced
+        </h2>
+        <p className="mt-1 text-[13px] text-ink-500">
+          Every recording lives only on this phone.
         </p>
-      )}
-      {practiceHistory.map((item, index) => (
-        <div
-          key={`${item.phraseId}-${index}`}
-          className="rounded-2xl bg-violet-50/80 p-3"
-        >
-          <p className="font-semibold text-slate-800">{item.koreanText}</p>
-          <p className="text-xs text-slate-500">
-            {new Date(item.createdAt).toLocaleString()}
+      </div>
+
+      {practiceHistory.length === 0 ? (
+        <div className="surface-soft flex items-center gap-4 p-5">
+          <TigerMark size={44} />
+          <p className="text-[13.5px] text-ink-500">
+            Nothing yet. Tap{' '}
+            <span className="font-display-italic text-ink-700">Repeat</span> on a phrase to start your diary.
           </p>
         </div>
-      ))}
+      ) : (
+        <div className="surface divide-y divide-cream-200 p-2">
+          {practiceHistory.map((item, index) => (
+            <div key={`${item.phraseId}-${index}`} className="px-4 py-3">
+              <p className="font-display text-[17px] font-semibold leading-tight text-ink-900">
+                {item.koreanText}
+              </p>
+              <p className="mt-0.5 text-[11.5px] tracking-wide text-ink-300">
+                {new Date(item.createdAt).toLocaleString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 
+  const navItems = [
+    { id: 'home', label: 'Today', icon: Compass },
+    { id: 'custom', label: 'Phrasebook', icon: Search },
+    { id: 'wildcard', label: 'Parents', icon: Library },
+    { id: 'history', label: 'Diary', icon: Mic },
+  ];
+
   return (
-    <div className="relative mx-auto min-h-screen w-full max-w-md pb-28">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/40 bg-white/40 px-5 py-3 backdrop-blur-md">
-        <div>
-          <p className="font-script text-lg leading-none text-rose-500">survival</p>
-          <p className="font-display text-lg font-bold leading-tight text-slate-900">
-            Korean Coach
-          </p>
+    <div className="relative mx-auto min-h-screen w-full max-w-[440px] pb-28">
+      <header className="sticky top-0 z-10 flex items-center justify-between px-5 pb-3 pt-5">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: '#fdeee7' }}>
+            <TigerMark size={28} />
+          </span>
+          <div>
+            <p className="font-display text-[15px] font-semibold leading-tight text-ink-900">
+              Survival Korean
+            </p>
+            <p className="text-[11px] tracking-[0.18em] uppercase text-ink-500">
+              Quiet coach
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-600">
-          <Flame size={12} />
-          {streak.count > 0 ? `${streak.count}d` : 'start streak'}
+        <div
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+          style={{ backgroundColor: '#fdeee7', color: '#a8412c' }}
+          title={streak.count > 0 ? `${streak.count}-day streak` : 'Start a streak by practicing today'}
+        >
+          <Flame size={13} />
+          <span className="tabular-nums">{streak.count > 0 ? `${streak.count}d` : 'new'}</span>
         </div>
       </header>
 
-      <main className="space-y-4 p-4">
+      <main className="px-4">
         {activeTab === 'home' && renderHome()}
         {activeTab === 'day' && renderDay()}
         {activeTab === 'custom' && renderCustom()}
@@ -1140,31 +1259,37 @@ const StudentGroupManager = () => {
         {activeTab === 'history' && renderHistory()}
       </main>
 
-      <nav className="fixed bottom-3 left-0 right-0 z-20 mx-auto grid w-[calc(100%-1.25rem)] max-w-md grid-cols-4 rounded-3xl border border-white/60 bg-white/85 p-1 shadow-[0_12px_40px_rgba(244,114,182,0.18)] backdrop-blur-md">
-        <button
-          onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-xs font-bold ${activeTab === 'home' ? 'bg-rose-100 text-rose-700' : 'text-slate-500'}`}
+      <nav
+        className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2"
+        style={{ width: 'min(calc(100% - 1.5rem), 420px)' }}
+      >
+        <div
+          className="flex items-center gap-1 rounded-full p-1.5"
+          style={{
+            backgroundColor: 'rgba(31, 24, 18, 0.92)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 12px 32px -8px rgba(31, 24, 18, 0.4)',
+          }}
         >
-          <Sparkles size={18} /> Home
-        </button>
-        <button
-          onClick={() => setActiveTab('custom')}
-          className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-xs font-bold ${activeTab === 'custom' ? 'bg-violet-100 text-violet-700' : 'text-slate-500'}`}
-        >
-          <Search size={18} /> Custom
-        </button>
-        <button
-          onClick={() => setActiveTab('wildcard')}
-          className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-xs font-bold ${activeTab === 'wildcard' ? 'bg-amber-100 text-amber-700' : 'text-slate-500'}`}
-        >
-          <CalendarHeart size={18} /> Wildcard
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-xs font-bold ${activeTab === 'history' ? 'bg-sky-100 text-sky-700' : 'text-slate-500'}`}
-        >
-          <Mic size={18} /> Diary
-        </button>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id || (item.id === 'home' && activeTab === 'day');
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="group flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-[12px] font-medium transition"
+                style={{
+                  backgroundColor: isActive ? '#ec6a4d' : 'transparent',
+                  color: isActive ? '#fff8f0' : 'rgba(253, 246, 234, 0.62)',
+                }}
+              >
+                <Icon size={15} strokeWidth={isActive ? 2.4 : 2} />
+                <span className={isActive ? 'inline' : 'hidden sm:inline'}>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );
