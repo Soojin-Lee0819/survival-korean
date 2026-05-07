@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -6,12 +6,29 @@ import {
   Flame,
   Library,
   Mic,
-  Pause,
   Play,
+  RotateCcw,
   Search,
+  Sparkles,
   Square,
   StickyNote,
+  Trophy,
+  X,
 } from 'lucide-react';
+import {
+  BADGES,
+  levelFor,
+  loadBadges,
+  loadScores,
+  loadXp,
+  persistBadges,
+  persistScores,
+  persistXp,
+  recordScore,
+  xpForScore,
+} from './lib/gamification';
+import { describeScore, scorePronunciation } from './lib/pronunciation';
+import useSpeechRecognition from './hooks/useSpeechRecognition';
 
 const ACCENT_PALETTE = [
   { name: 'coral',      bg: '#fdeee7', tint: '#fbd9c8', ink: '#a8412c', dot: '#ec6a4d' },
@@ -583,6 +600,29 @@ const STICKER_GLYPHS = {
       <path d="M32 14l5 11 12 1-9 8 3 12-11-7-11 7 3-12-9-8 12-1z" />
     </g>
   ),
+  target: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="32" cy="32" r="14" />
+      <circle cx="32" cy="32" r="9" />
+      <circle cx="32" cy="32" r="4" />
+      <circle cx="32" cy="32" r="1.5" fill="currentColor" />
+    </g>
+  ),
+  crown: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M14 38l4-16 8 10 6-14 6 14 8-10 4 16z" />
+      <path d="M14 38h36v6H14z" />
+      <circle cx="22" cy="22" r="1.4" fill="currentColor" />
+      <circle cx="32" cy="18" r="1.4" fill="currentColor" />
+      <circle cx="42" cy="22" r="1.4" fill="currentColor" />
+    </g>
+  ),
+  flame: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M32 14c-4 6-9 10-9 17 0 7 4 13 9 13s9-6 9-13c0-3-1-5-3-7-1 3-3 5-5 5 1-5-1-10-1-15z" />
+      <path d="M30 36c0 3 1 5 2 6 1-1 2-3 2-6" />
+    </g>
+  ),
 };
 
 const Sticker = ({ type, palette }) => {
@@ -624,6 +664,124 @@ const PaletteSwatch = ({ palette, label }) => (
   </span>
 );
 
+const BadgeMedal = ({ id, earnedAt, size = 'md' }) => {
+  const def = BADGES[id];
+  if (!def) return null;
+  const palette = ACCENT_PALETTE[def.paletteIdx % ACCENT_PALETTE.length];
+  const dim = size === 'lg' ? 'h-16 w-16' : size === 'sm' ? 'h-10 w-10' : 'h-12 w-12';
+  const glyphSize = size === 'lg' ? 'h-10 w-10' : size === 'sm' ? 'h-6 w-6' : 'h-7 w-7';
+  return (
+    <div className="flex flex-col items-center gap-1.5 text-center">
+      <div
+        className={`${dim} relative inline-flex items-center justify-center rounded-2xl ${earnedAt ? '' : 'opacity-35'}`}
+        style={{ backgroundColor: palette.bg, color: palette.ink }}
+      >
+        <svg viewBox="0 0 64 64" className={glyphSize} aria-hidden="true">
+          {STICKER_GLYPHS[def.glyph] || STICKER_GLYPHS.star}
+        </svg>
+        {earnedAt && (
+          <span
+            className="absolute -bottom-1 -right-1 inline-block h-3 w-3 rounded-full ring-2 ring-white"
+            style={{ backgroundColor: '#88a06c' }}
+          />
+        )}
+      </div>
+      {size !== 'sm' && (
+        <p className="text-[11px] font-semibold leading-tight text-ink-700">{def.name}</p>
+      )}
+    </div>
+  );
+};
+
+const ScoreBar = ({ score, label }) => {
+  const clamped = Math.max(0, Math.min(100, Math.round(score)));
+  const tier = describeScore(score);
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-cream-200">
+        <div
+          className="h-full rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${clamped}%`, backgroundColor: tier.color }}
+        />
+      </div>
+      <span
+        className="font-display text-[15px] font-semibold tabular-nums leading-none"
+        style={{ color: tier.color }}
+      >
+        {clamped}
+      </span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: tier.color }}>
+        {label || tier.label}
+      </span>
+    </div>
+  );
+};
+
+const LevelChip = ({ levelInfo, compact = false }) => {
+  const widthPct = Math.round(levelInfo.progress * 100);
+  return (
+    <div
+      className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-3 py-1"
+      style={{ backgroundColor: '#fdeee7' }}
+    >
+      <span
+        className="font-display inline-flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-semibold"
+        style={{ backgroundColor: '#ec6a4d', color: '#fff8f0' }}
+        aria-hidden="true"
+      >
+        {levelInfo.level}
+      </span>
+      <span className="flex flex-col leading-tight">
+        <span className="font-display text-[13px] font-semibold text-ink-900">
+          {levelInfo.ko}
+        </span>
+        {!compact && (
+          <span className="text-[10px] tracking-wide text-ink-500">
+            {levelInfo.xp} xp · {levelInfo.next === Infinity ? 'max' : `${levelInfo.next - levelInfo.xp} to ${levelFor(levelInfo.next).ko}`}
+          </span>
+        )}
+      </span>
+      <span className="hidden h-1.5 w-12 overflow-hidden rounded-full sm:inline-block" style={{ backgroundColor: '#fbd9c8' }}>
+        <span
+          className="block h-full rounded-full transition-all duration-500"
+          style={{ width: `${widthPct}%`, backgroundColor: '#ec6a4d' }}
+        />
+      </span>
+    </div>
+  );
+};
+
+const Toast = ({ toast, onDismiss }) => {
+  const palette = toast.kind === 'badge' ? ACCENT_PALETTE[0] : ACCENT_PALETTE[1];
+  const Icon = toast.kind === 'badge' ? Trophy : Sparkles;
+  return (
+    <div
+      role="status"
+      className="surface flex items-center gap-3 px-4 py-3 animate-in"
+      style={{ borderLeft: `3px solid ${palette.dot}` }}
+    >
+      <span
+        className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
+        style={{ backgroundColor: palette.bg, color: palette.ink }}
+      >
+        <Icon size={18} />
+      </span>
+      <div className="flex-1 leading-tight">
+        <p className="font-display text-[14px] font-semibold text-ink-900">{toast.title}</p>
+        {toast.body && <p className="text-[12px] text-ink-500">{toast.body}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onDismiss(toast.id)}
+        className="-mr-1 rounded-full p-1 text-ink-300 transition hover:text-ink-700"
+        aria-label="Dismiss"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+};
+
 const StudentGroupManager = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [activeDayId, setActiveDayId] = useState(null);
@@ -633,7 +791,6 @@ const StudentGroupManager = () => {
   const [customInput, setCustomInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [recordings, setRecordings] = useState({});
-  const [isRecording, setIsRecording] = useState(false);
   const [practiceHistory, setPracticeHistory] = useState(() =>
     JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]')
   );
@@ -643,6 +800,16 @@ const StudentGroupManager = () => {
   const [practicedToday, setPracticedToday] = useState(() =>
     JSON.parse(localStorage.getItem(STORAGE_KEYS.practiced) || '{}')
   );
+
+  const [xp, setXp] = useState(() => loadXp());
+  const [badges, setBadges] = useState(() => loadBadges());
+  const [scores, setScores] = useState(() => loadScores());
+  const [toasts, setToasts] = useState([]);
+  // Per-phrase scoring state. Shape: { [phraseId]: { score, transcript, status } }
+  const [phraseFeedback, setPhraseFeedback] = useState({});
+  const sessionPerfectsRef = useRef(0);
+
+  const speech = useSpeechRecognition({ lang: 'ko-KR' });
 
   const meetingDate = useMemo(() => computeMeetingDate(), []);
   const days = useMemo(() => daysUntil(meetingDate), [meetingDate]);
@@ -654,9 +821,12 @@ const StudentGroupManager = () => {
     return 7 - days;
   }, [days]);
 
+  const levelInfo = useMemo(() => levelFor(xp), [xp]);
+
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const currentRecordingPhraseIdRef = useRef('');
+  const fallbackRecordingRef = useRef(false);
 
   const wildcardPhrases = useMemo(() => buildParentsPhrases(), []);
 
@@ -694,6 +864,60 @@ const StudentGroupManager = () => {
       .slice(0, 30);
   }, [allPhrases, generatedPhrases, searchQuery]);
 
+  const pushToast = (toast) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const next = { id, ...toast };
+    setToasts((prev) => [next, ...prev].slice(0, 3));
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4200);
+  };
+
+  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  const awardXp = (amount, label) => {
+    if (!amount) return null;
+    let nextLevelInfo = null;
+    setXp((prev) => {
+      const previousLevel = levelFor(prev).level;
+      const nextValue = Math.max(0, prev + amount);
+      const nextLevel = levelFor(nextValue).level;
+      persistXp(nextValue);
+      if (nextLevel > previousLevel) {
+        nextLevelInfo = levelFor(nextValue);
+      }
+      return nextValue;
+    });
+    pushToast({ kind: 'xp', title: `+${amount} xp · ${label}` });
+    if (nextLevelInfo) {
+      setTimeout(() => {
+        pushToast({
+          kind: 'badge',
+          title: `Level ${nextLevelInfo.level} · ${nextLevelInfo.ko}`,
+          body: `You earned the title "${nextLevelInfo.en}".`,
+        });
+      }, 600);
+    }
+    return amount;
+  };
+
+  const awardBadge = (id) => {
+    if (!BADGES[id] || badges[id]) return false;
+    const nowISO = new Date().toISOString();
+    setBadges((prev) => {
+      if (prev[id]) return prev;
+      const next = { ...prev, [id]: nowISO };
+      persistBadges(next);
+      return next;
+    });
+    pushToast({
+      kind: 'badge',
+      title: `Badge unlocked · ${BADGES[id].name}`,
+      body: BADGES[id].desc,
+    });
+    return true;
+  };
+
   const speakPhrase = (text) => {
     if (!('speechSynthesis' in window)) return;
     const utterance = new SpeechSynthesisUtterance(text);
@@ -702,6 +926,7 @@ const StudentGroupManager = () => {
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
     trackEvent('phrase_listened', { text });
+    if (!badges.echo) awardBadge('echo');
   };
 
   const playRecording = (phraseId) => {
@@ -715,9 +940,121 @@ const StudentGroupManager = () => {
     const updated = { ...practicedToday, [phraseId]: todayKey };
     setPracticedToday(updated);
     localStorage.setItem(STORAGE_KEYS.practiced, JSON.stringify(updated));
+    return updated;
   };
 
-  const startRecording = async (phraseId) => {
+  const finalizePractice = (phraseId, { score = null, transcript = null } = {}) => {
+    const phrase = allPhrases.find((item) => item.id === phraseId);
+    if (!phrase) return;
+
+    const reward = xpForScore(score);
+    awardXp(reward.amount, reward.label);
+
+    const updatedHistory = [
+      {
+        phraseId,
+        koreanText: phrase.koreanText,
+        score,
+        transcript,
+        createdAt: new Date().toISOString(),
+      },
+      ...practiceHistory,
+    ].slice(0, 60);
+    setPracticeHistory(updatedHistory);
+    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(updatedHistory));
+
+    if (score != null) {
+      setScores((prev) => {
+        const next = recordScore(prev, phraseId, score);
+        persistScores(next);
+        return next;
+      });
+    }
+
+    const updatedStreak = updateStreak();
+    setStreak(updatedStreak);
+    localStorage.setItem(STORAGE_KEYS.streak, JSON.stringify(updatedStreak));
+    if (updatedStreak.count >= 3) awardBadge('streak3');
+    if (updatedStreak.count >= 7) awardBadge('streak7');
+
+    if (!badges.mirror) awardBadge('mirror');
+    if (score != null && score >= 90) {
+      awardBadge('perfect');
+      sessionPerfectsRef.current += 1;
+      if (sessionPerfectsRef.current >= 3) awardBadge('bullseye');
+    } else if (score != null && score < 70) {
+      sessionPerfectsRef.current = 0;
+    }
+
+    const updatedPracticed = markPracticed(phraseId);
+
+    DAY_PLAN.forEach((day, idx) => {
+      const allDone = day.phrases.every((p) => updatedPracticed[p.id] === todayKey);
+      if (allDone) {
+        if (idx === 0) awardBadge('day1');
+        if (idx === DAY_PLAN.length - 1) awardBadge('day7');
+      }
+    });
+
+    const parentsPracticed = wildcardPhrases
+      .slice(0, 30)
+      .filter((p) => updatedPracticed[p.id] === todayKey).length;
+    if (parentsPracticed >= 10) awardBadge('parents10');
+
+    trackEvent('practice_recorded', { phraseId, score });
+  };
+
+  // Effect: when speech recognition transitions to "done" or "error", evaluate.
+  useEffect(() => {
+    if (!speech.activeId) return;
+    if (speech.status !== 'done' && speech.status !== 'error') return;
+
+    const phraseId = speech.activeId;
+    const phrase = allPhrases.find((item) => item.id === phraseId);
+    if (!phrase) {
+      speech.reset();
+      return;
+    }
+
+    if (speech.status === 'error') {
+      setPhraseFeedback((prev) => ({
+        ...prev,
+        [phraseId]: { status: 'error', error: speech.error || 'recognition_error' },
+      }));
+      speech.reset();
+      return;
+    }
+
+    const result = scorePronunciation(phrase.koreanText, speech.transcript);
+    if (!result) {
+      speech.reset();
+      return;
+    }
+
+    setPhraseFeedback((prev) => ({
+      ...prev,
+      [phraseId]: {
+        status: 'scored',
+        score: result.score,
+        transcript: speech.transcript,
+        target: result.target,
+      },
+    }));
+    finalizePractice(phraseId, { score: result.score, transcript: speech.transcript });
+    speech.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speech.status, speech.activeId]);
+
+  const startRepeat = async (phraseId) => {
+    sessionPerfectsRef.current = 0;
+    fallbackRecordingRef.current = false;
+    setPhraseFeedback((prev) => ({ ...prev, [phraseId]: { status: 'listening' } }));
+    if (speech.isSupported) {
+      const ok = speech.start(phraseId);
+      if (ok) return;
+    }
+    // Fallback: MediaRecorder, no scoring, just store playback.
+    fallbackRecordingRef.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -728,37 +1065,44 @@ const StudentGroupManager = () => {
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
-        setRecordings((prev) => ({ ...prev, [currentRecordingPhraseIdRef.current]: url }));
-        const phrase = allPhrases.find((item) => item.id === currentRecordingPhraseIdRef.current);
-        const updatedHistory = [
-          {
-            phraseId: currentRecordingPhraseIdRef.current,
-            koreanText: phrase?.koreanText || '',
-            createdAt: new Date().toISOString(),
-          },
-          ...practiceHistory,
-        ].slice(0, 40);
-        setPracticeHistory(updatedHistory);
-        localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(updatedHistory));
-        trackEvent('practice_recorded', { phraseId: currentRecordingPhraseIdRef.current });
-        const updatedStreak = updateStreak();
-        setStreak(updatedStreak);
-        localStorage.setItem(STORAGE_KEYS.streak, JSON.stringify(updatedStreak));
-        markPracticed(currentRecordingPhraseIdRef.current);
+        setRecordings((prev) => ({ ...prev, [phraseId]: url }));
+        finalizePractice(phraseId);
+        setPhraseFeedback((prev) => ({
+          ...prev,
+          [phraseId]: { status: 'recorded', score: null, transcript: null },
+        }));
         stream.getTracks().forEach((track) => track.stop());
       };
       mediaRecorder.start();
-      setIsRecording(true);
     } catch (error) {
       console.error('Microphone access failed', error);
-      alert('Microphone permission is needed to record your voice.');
+      setPhraseFeedback((prev) => ({
+        ...prev,
+        [phraseId]: { status: 'error', error: 'permission' },
+      }));
+      pushToast({
+        kind: 'badge',
+        title: 'Microphone needed',
+        body: 'Allow microphone access to practice speaking.',
+      });
     }
   };
 
-  const stopRecording = () => {
-    if (!mediaRecorderRef.current) return;
-    mediaRecorderRef.current.stop();
-    setIsRecording(false);
+  const stopRepeat = () => {
+    if (fallbackRecordingRef.current && mediaRecorderRef.current) {
+      try { mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+      return;
+    }
+    speech.stop();
+  };
+
+  const retryFeedback = (phraseId) => {
+    setPhraseFeedback((prev) => {
+      const next = { ...prev };
+      delete next[phraseId];
+      return next;
+    });
+    speech.reset();
   };
 
   const generatePhrase = () => {
@@ -783,6 +1127,14 @@ const StudentGroupManager = () => {
     const tone = palette || ACCENT_PALETTE[0];
     const isPracticed = practicedToday[phrase.id] === todayKey;
     const hasRecording = Boolean(recordings[phrase.id]);
+    const feedback = phraseFeedback[phrase.id];
+    const phraseScore = scores[phrase.id];
+    const isActiveRepeat =
+      (speech.activeId === phrase.id && speech.isListening) ||
+      feedback?.status === 'listening';
+    const liveTranscript = isActiveRepeat
+      ? (speech.transcript || speech.interim || '')
+      : '';
     return (
       <article
         key={`${phrase.id}-${phrase.category}`}
@@ -790,15 +1142,29 @@ const StudentGroupManager = () => {
       >
         <div className="flex items-center justify-between gap-3">
           <PaletteSwatch palette={tone} label={phrase.category} />
-          {isPracticed && (
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-              style={{ backgroundColor: '#eef2e6', color: '#4f6840' }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#88a06c' }} />
-              done today
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            {phraseScore?.best > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold tabular-nums"
+                style={{
+                  backgroundColor: describeScore(phraseScore.best).color + '22',
+                  color: describeScore(phraseScore.best).color,
+                }}
+                title={`Best score: ${phraseScore.best}`}
+              >
+                <Trophy size={10} /> {phraseScore.best}
+              </span>
+            )}
+            {isPracticed && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                style={{ backgroundColor: '#eef2e6', color: '#4f6840' }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#88a06c' }} />
+                today
+              </span>
+            )}
+          </div>
         </div>
 
         <h3 className="font-display mt-3 text-[28px] font-semibold leading-[1.1] text-ink-900">
@@ -818,34 +1184,87 @@ const StudentGroupManager = () => {
           </p>
         )}
 
-        <div className="mt-4 flex items-center gap-2">
-          <button
-            onClick={() => speakPhrase(phrase.koreanText)}
-            className="btn-primary"
+        {isActiveRepeat && (
+          <div
+            className="mt-3 rounded-2xl border px-4 py-3"
+            style={{ borderColor: '#fbd9c8', backgroundColor: '#fdf3ec' }}
           >
+            <div className="flex items-center gap-2">
+              <span className="relative inline-flex h-2 w-2">
+                <span className="absolute inset-0 animate-ping rounded-full" style={{ backgroundColor: '#ec6a4d', opacity: 0.6 }} />
+                <span className="relative inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#ec6a4d' }} />
+              </span>
+              <span className="label-eyebrow">Listening · ko-KR</span>
+            </div>
+            <p className="font-display mt-2 min-h-[28px] text-[20px] leading-snug text-ink-900">
+              {liveTranscript || (
+                <span className="font-display-italic text-ink-300">Speak now…</span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {feedback?.status === 'scored' && (
+          <div className="mt-3 rounded-2xl border border-cream-200 px-4 py-3">
+            <ScoreBar score={feedback.score} />
+            <div className="mt-2 flex items-baseline gap-2 text-[12.5px]">
+              <span className="label-eyebrow text-[10px]">You said</span>
+              <span className="font-display text-ink-900">
+                {feedback.transcript || <span className="text-ink-300">(silence)</span>}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => retryFeedback(phrase.id)}
+              className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-ink-500 hover:text-ink-900"
+            >
+              <RotateCcw size={12} /> Try again
+            </button>
+          </div>
+        )}
+
+        {feedback?.status === 'error' && (
+          <div
+            className="mt-3 rounded-2xl px-4 py-3 text-[13px]"
+            style={{ backgroundColor: '#fdeee7', color: '#a8412c' }}
+          >
+            {feedback.error === 'no-speech'
+              ? "Didn't hear anything. Try once more."
+              : feedback.error === 'permission'
+                ? 'Microphone permission was blocked.'
+                : 'Recognition stopped early. Tap Repeat to try again.'}
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <button onClick={() => speakPhrase(phrase.koreanText)} className="btn-primary">
             <Play size={14} fill="currentColor" /> Listen
           </button>
-          {!isRecording ? (
-            <button
-              onClick={() => startRecording(phrase.id)}
-              className="btn-coral"
-            >
+          {!isActiveRepeat ? (
+            <button onClick={() => startRepeat(phrase.id)} className="btn-coral">
               <Mic size={14} /> Repeat
             </button>
           ) : (
-            <button onClick={stopRecording} className="btn-coral">
+            <button onClick={stopRepeat} className="btn-coral">
               <Square size={12} fill="currentColor" /> Stop
             </button>
           )}
-          <button
-            onClick={() => playRecording(phrase.id)}
-            disabled={!hasRecording}
-            className="btn-ghost disabled:opacity-40 disabled:cursor-not-allowed"
-            title={hasRecording ? 'Play your recording' : 'Record yourself first'}
-          >
-            <StickyNote size={14} /> Mine
-          </button>
+          {hasRecording && (
+            <button
+              onClick={() => playRecording(phrase.id)}
+              className="btn-ghost"
+              title="Play your recording"
+            >
+              <StickyNote size={14} /> Mine
+            </button>
+          )}
         </div>
+
+        {!speech.isSupported && (
+          <p className="mt-3 text-[11px] text-ink-300">
+            <span className="font-display-italic">Note:</span> live scoring needs Chrome or iOS Safari 14.5+. We'll record your voice instead.
+          </p>
+        )}
       </article>
     );
   };
@@ -1175,64 +1594,182 @@ const StudentGroupManager = () => {
     );
   };
 
-  const renderHistory = () => (
-    <section className="space-y-4">
-      <div className="surface animate-in p-6">
-        <p className="label-eyebrow">Diary</p>
-        <h2 className="font-display mt-1 text-[24px] font-semibold leading-tight text-ink-900">
-          What you've practiced
-        </h2>
-        <p className="mt-1 text-[13px] text-ink-500">
-          Every recording lives only on this phone.
-        </p>
-      </div>
+  const renderProgress = () => {
+    const earnedBadges = Object.entries(badges)
+      .map(([id, earnedAt]) => ({ id, earnedAt }))
+      .filter((b) => Boolean(BADGES[b.id]));
+    const earnedIds = new Set(earnedBadges.map((b) => b.id));
+    const remainingBadges = Object.values(BADGES).filter((b) => !earnedIds.has(b.id));
+    const widthPct = Math.round(levelInfo.progress * 100);
+    const xpToNext = levelInfo.next === Infinity ? 0 : levelInfo.next - levelInfo.xp;
+    const totalAttempts = Object.values(scores).reduce((sum, s) => sum + (s.attempts || 0), 0);
+    const bestScores = Object.values(scores).map((s) => s.best || 0);
+    const avgBest = bestScores.length
+      ? Math.round(bestScores.reduce((a, b) => a + b, 0) / bestScores.length)
+      : 0;
 
-      {practiceHistory.length === 0 ? (
-        <div className="surface-soft flex items-center gap-4 p-5">
-          <TigerMark size={44} />
-          <p className="text-[13.5px] text-ink-500">
-            Nothing yet. Tap{' '}
-            <span className="font-display-italic text-ink-700">Repeat</span> on a phrase to start your diary.
-          </p>
-        </div>
-      ) : (
-        <div className="surface divide-y divide-cream-200 p-2">
-          {practiceHistory.map((item, index) => (
-            <div key={`${item.phraseId}-${index}`} className="px-4 py-3">
-              <p className="font-display text-[17px] font-semibold leading-tight text-ink-900">
-                {item.koreanText}
+    return (
+      <section className="space-y-4">
+        <div className="surface animate-in p-6">
+          <p className="label-eyebrow">Progress</p>
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <div>
+              <p
+                className="font-display text-[44px] font-semibold leading-none text-ink-900"
+                style={{ fontFeatureSettings: '"ss01"' }}
+              >
+                {levelInfo.ko}
               </p>
-              <p className="mt-0.5 text-[11.5px] tracking-wide text-ink-300">
-                {new Date(item.createdAt).toLocaleString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}
+              <p className="mt-1 text-[12.5px] tracking-wide text-ink-500">
+                Level {levelInfo.level} · {levelInfo.en}
               </p>
             </div>
-          ))}
+            <div className="text-right">
+              <p
+                className="font-display text-[28px] font-semibold tabular-nums leading-none"
+                style={{ color: '#ec6a4d' }}
+              >
+                {levelInfo.xp}
+              </p>
+              <p className="mt-0.5 text-[11px] tracking-wide text-ink-500">total xp</p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: '#fbd9c8' }}>
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${widthPct}%`, backgroundColor: '#ec6a4d' }}
+              />
+            </div>
+            <p className="mt-2 text-[11.5px] text-ink-500">
+              {xpToNext > 0
+                ? `${xpToNext} xp until ${levelFor(levelInfo.next).ko} (${levelFor(levelInfo.next).en})`
+                : 'Top tier · keep speaking softly.'}
+            </p>
+          </div>
+
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="rounded-2xl px-3 py-2.5" style={{ backgroundColor: '#f5ecdc' }}>
+              <p className="text-[10.5px] uppercase tracking-[0.18em] text-ink-500">Streak</p>
+              <p className="font-display mt-0.5 text-[22px] font-semibold tabular-nums leading-none text-ink-900">
+                {streak.count}d
+              </p>
+            </div>
+            <div className="rounded-2xl px-3 py-2.5" style={{ backgroundColor: '#eef2e6' }}>
+              <p className="text-[10.5px] uppercase tracking-[0.18em] text-ink-500">Avg best</p>
+              <p className="font-display mt-0.5 text-[22px] font-semibold tabular-nums leading-none text-ink-900">
+                {avgBest || '—'}
+              </p>
+            </div>
+            <div className="rounded-2xl px-3 py-2.5" style={{ backgroundColor: '#e8eef0' }}>
+              <p className="text-[10.5px] uppercase tracking-[0.18em] text-ink-500">Tries</p>
+              <p className="font-display mt-0.5 text-[22px] font-semibold tabular-nums leading-none text-ink-900">
+                {totalAttempts}
+              </p>
+            </div>
+          </div>
         </div>
-      )}
-    </section>
-  );
+
+        <div className="surface animate-in delay-50 p-6">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="label-eyebrow">Badges</p>
+              <h3 className="font-display mt-0.5 text-[20px] font-semibold leading-tight text-ink-900">
+                {earnedBadges.length} of {Object.keys(BADGES).length} unlocked
+              </h3>
+            </div>
+          </div>
+
+          {earnedBadges.length === 0 && (
+            <p className="mt-3 text-[13px] text-ink-500">
+              No badges yet. Tap <span className="font-display-italic text-ink-700">Listen</span> or{' '}
+              <span className="font-display-italic text-ink-700">Repeat</span> on any phrase to start unlocking.
+            </p>
+          )}
+
+          <div className="mt-4 grid grid-cols-4 gap-3">
+            {earnedBadges.map((b) => (
+              <BadgeMedal key={b.id} id={b.id} earnedAt={b.earnedAt} />
+            ))}
+            {remainingBadges.map((b) => (
+              <BadgeMedal key={b.id} id={b.id} earnedAt={null} />
+            ))}
+          </div>
+        </div>
+
+        <div className="surface animate-in delay-100 p-6">
+          <p className="label-eyebrow">Diary</p>
+          <h3 className="font-display mt-0.5 text-[20px] font-semibold leading-tight text-ink-900">
+            What you've practiced
+          </h3>
+          {practiceHistory.length === 0 ? (
+            <div className="mt-3 flex items-center gap-3">
+              <TigerMark size={36} />
+              <p className="text-[13px] text-ink-500">
+                Nothing yet. Tap <span className="font-display-italic text-ink-700">Repeat</span> on a phrase to start your diary.
+              </p>
+            </div>
+          ) : (
+            <div className="-mx-2 mt-3 divide-y divide-cream-200">
+              {practiceHistory.slice(0, 25).map((item, index) => {
+                const tier = item.score != null ? describeScore(item.score) : null;
+                return (
+                  <div
+                    key={`${item.phraseId}-${index}`}
+                    className="flex items-center gap-3 px-2 py-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display truncate text-[16px] font-semibold leading-tight text-ink-900">
+                        {item.koreanText}
+                      </p>
+                      <p className="mt-0.5 text-[11px] tracking-wide text-ink-300">
+                        {new Date(item.createdAt).toLocaleString(undefined, {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    {item.score != null && tier && (
+                      <span
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
+                        style={{ backgroundColor: tier.color + '22', color: tier.color }}
+                      >
+                        <Trophy size={10} /> {item.score}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   const navItems = [
     { id: 'home', label: 'Today', icon: Compass },
     { id: 'custom', label: 'Phrasebook', icon: Search },
     { id: 'wildcard', label: 'Parents', icon: Library },
-    { id: 'history', label: 'Diary', icon: Mic },
+    { id: 'progress', label: 'Progress', icon: Trophy },
   ];
 
   return (
     <div className="relative mx-auto min-h-screen w-full max-w-[440px] pb-28">
-      <header className="sticky top-0 z-10 flex items-center justify-between px-5 pb-3 pt-5">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 pb-3 pt-5">
+        <button
+          type="button"
+          onClick={() => setActiveTab('home')}
+          className="flex items-center gap-3 rounded-2xl"
+        >
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: '#fdeee7' }}>
             <TigerMark size={28} />
           </span>
-          <div>
+          <div className="text-left">
             <p className="font-display text-[15px] font-semibold leading-tight text-ink-900">
               Survival Korean
             </p>
@@ -1240,23 +1777,39 @@ const StudentGroupManager = () => {
               Quiet coach
             </p>
           </div>
-        </div>
-        <div
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-          style={{ backgroundColor: '#fdeee7', color: '#a8412c' }}
-          title={streak.count > 0 ? `${streak.count}-day streak` : 'Start a streak by practicing today'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('progress')}
+          className="flex items-center gap-1.5"
+          aria-label="Open progress"
         >
-          <Flame size={13} />
-          <span className="tabular-nums">{streak.count > 0 ? `${streak.count}d` : 'new'}</span>
-        </div>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold"
+            style={{ backgroundColor: '#fdeee7', color: '#a8412c' }}
+            title={streak.count > 0 ? `${streak.count}-day streak` : 'Start a streak by practicing today'}
+          >
+            <Flame size={12} />
+            <span className="tabular-nums">{streak.count > 0 ? `${streak.count}d` : 'new'}</span>
+          </span>
+          <LevelChip levelInfo={levelInfo} compact />
+        </button>
       </header>
+
+      {toasts.length > 0 && (
+        <div className="pointer-events-auto fixed left-1/2 top-3 z-30 flex w-[min(calc(100%-1.5rem),420px)] -translate-x-1/2 flex-col gap-2">
+          {toasts.map((t) => (
+            <Toast key={t.id} toast={t} onDismiss={dismissToast} />
+          ))}
+        </div>
+      )}
 
       <main className="px-4">
         {activeTab === 'home' && renderHome()}
         {activeTab === 'day' && renderDay()}
         {activeTab === 'custom' && renderCustom()}
         {activeTab === 'wildcard' && renderWildcard()}
-        {activeTab === 'history' && renderHistory()}
+        {activeTab === 'progress' && renderProgress()}
       </main>
 
       <nav
