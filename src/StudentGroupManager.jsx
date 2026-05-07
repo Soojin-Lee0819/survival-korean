@@ -721,7 +721,7 @@ const LevelChip = ({ levelInfo, compact = false }) => {
   const widthPct = Math.round(levelInfo.progress * 100);
   return (
     <div
-      className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-3 py-1"
+      className="inline-flex items-center gap-2 rounded-full pl-1 pr-3 py-1"
       style={{ backgroundColor: '#fdeee7' }}
     >
       <span
@@ -732,12 +732,12 @@ const LevelChip = ({ levelInfo, compact = false }) => {
         {levelInfo.level}
       </span>
       <span className="flex flex-col leading-tight">
-        <span className="font-display text-[13px] font-semibold text-ink-900">
-          {levelInfo.ko}
+        <span className="text-[12.5px] font-semibold text-ink-900">
+          {levelInfo.en}
         </span>
         {!compact && (
           <span className="text-[10px] tracking-wide text-ink-500">
-            {levelInfo.xp} xp · {levelInfo.next === Infinity ? 'max' : `${levelInfo.next - levelInfo.xp} to ${levelFor(levelInfo.next).ko}`}
+            {levelInfo.xp} xp · {levelInfo.next === Infinity ? 'max' : `${levelInfo.next - levelInfo.xp} to ${levelFor(levelInfo.next).en}`}
           </span>
         )}
       </span>
@@ -893,8 +893,8 @@ const StudentGroupManager = () => {
       setTimeout(() => {
         pushToast({
           kind: 'badge',
-          title: `Level ${nextLevelInfo.level} · ${nextLevelInfo.ko}`,
-          body: `You earned the title "${nextLevelInfo.en}".`,
+          title: `Level ${nextLevelInfo.level} · ${nextLevelInfo.en}`,
+          body: `You unlocked the ${nextLevelInfo.en} tier.`,
         });
       }, 600);
     }
@@ -1615,13 +1615,13 @@ const StudentGroupManager = () => {
           <div className="mt-2 flex items-end justify-between gap-4">
             <div>
               <p
-                className="font-display text-[44px] font-semibold leading-none text-ink-900"
+                className="font-display text-[36px] font-semibold leading-none text-ink-900"
                 style={{ fontFeatureSettings: '"ss01"' }}
               >
-                {levelInfo.ko}
+                {levelInfo.en}
               </p>
               <p className="mt-1 text-[12.5px] tracking-wide text-ink-500">
-                Level {levelInfo.level} · {levelInfo.en}
+                Level {levelInfo.level} · <span className="font-display-italic">{levelInfo.ko}</span>
               </p>
             </div>
             <div className="text-right">
@@ -1644,7 +1644,7 @@ const StudentGroupManager = () => {
             </div>
             <p className="mt-2 text-[11.5px] text-ink-500">
               {xpToNext > 0
-                ? `${xpToNext} xp until ${levelFor(levelInfo.next).ko} (${levelFor(levelInfo.next).en})`
+                ? `${xpToNext} xp until ${levelFor(levelInfo.next).en}`
                 : 'Top tier · keep speaking softly.'}
             </p>
           </div>
